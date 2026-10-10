@@ -66,7 +66,7 @@ app.MapGet("/", () => Results.Content(
 app.MapGet("/description.xml", () => Results.Content(
     HueDescription.Render(ip, port, store), "text/xml; charset=utf-8"));
 app.MapGet("/api/config", () => Results.Json(HueResources.Config(ip, store)));
-app.MapGet("/api/{unauthorized}/config", (string unauthorized) =>
+app.MapGet("/api/nouser/config", () =>
     Results.Json(HueResources.Config(ip, store)));
 
 // Hue v1 bridge user creation. Pairing is opt-in and temporary.

@@ -34,3 +34,16 @@ jobs:
         run: dotnet build src/ChromaProbe/ChromaProbe.csproj --configuration Release
       - name: Verify native diagnostics without registering an app
         run: dotnet run --project src/ChromaProbe/ChromaProbe.csproj --configuration Release -- --diagnose
+  hue-prototype-windows:
+    name: Native Hue Bridge Windows smoke
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Build native Hue emulator
+        run: dotnet build src/HueDiscoveryProbe/HueDiscoveryProbe.csproj --configuration Release
+      - name: Check HTTP API, pairing, virtual lamp and disabled DTLS
+        shell: pwsh
+        run: .\scripts\test_hue_probe.ps1

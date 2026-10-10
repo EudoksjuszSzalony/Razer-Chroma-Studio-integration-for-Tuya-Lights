@@ -162,6 +162,25 @@ It lists matching Razer process names, checks for installed .NET SDKs and runtim
 
 In Synapse 3, confirm that **Chroma Connect is installed and enabled** in **Modules**. The ChromaControl .NET receiver also needs an **application GUID authorized for Chroma Connect**, not a generic game-app ID. Do not copy another partner's GUID to bypass device registration. Razer's [Chroma Connect explanation](https://mysupport.razer.com/app/answers/detail/a_id/1906/) describes the partner-device model, and [ChromaControl/SDK](https://github.com/ChromaControl/SDK) contains the RGB receiver used by our prototype.
 
+## Windows-native Hue Bridge discovery prototype
+
+A new **.NET 9** Hue Bridge emulator provides local SSDP discovery, basic
+Hue-v1 HTTP endpoints, one virtual lamp and an optional brief pairing window.
+It needs **no Docker** and sends **no Tuya hardware commands**. Hue
+Entertainment DTLS, HTTPS/v2 and real Chroma Studio streaming are not
+implemented yet.
+
+See **[Windows test instructions](docs/WINDOWS_HUE_PROTOTYPE.md)**.
+
+Run using your **Windows PC's** LAN IPv4, not the Tuya gateway's IP:
+
+```powershell
+dotnet run --project src/HueDiscoveryProbe/HueDiscoveryProbe.csproj -- --ip 192.168.1.20
+```
+
+Replace the example address with your actual PC LAN IP, then check Synapse
+3's **HUE** tab. Physical Tuya bulb controls remain separate.
+
 ## Planned features
 
 - Multiple bulbs, each mapped to one Chroma zone or a weighted average.
@@ -178,6 +197,7 @@ In Synapse 3, confirm that **Chroma Connect is installed and enabled** in **Modu
 | Tuya 3.5 authenticated session | Successful on tested SilverCrest gateway |
 | Zigbee child status and HSV DPS | Physical green output + DPS 5 write/readback confirmed for ceiling bulb |
 | Synapse 3 custom Studio color reception | Candidate MIT SDK identified; requires native DLL and authorized app ID |
+| Native Windows virtual Hue bridge | Discovery/pairing prototype; Synapse detection not tested yet |
 | Real-time lighting sync | Not implemented; offline Chroma RGB-to-HSV preview available |
 
 See [Architecture and protocol notes](docs/ARCHITECTURE.md).

@@ -84,16 +84,22 @@ public sealed class HueBridgeStore
                 {
                     case "on" when property.Value.ValueKind is JsonValueKind.True or JsonValueKind.False:
                         _light.On = property.Value.GetBoolean(); break;
-                    case "bri" when property.Value.TryGetInt32(out var bri) && bri is >= 1 and <= 254:
+                    case "bri" when property.Value.ValueKind == JsonValueKind.Number
+                                  && property.Value.TryGetInt32(out var bri) && bri is >= 1 and <= 254:
                         _light.Bri = bri; break;
-                    case "hue" when property.Value.TryGetInt32(out var hue) && hue is >= 0 and <= 65535:
+                    case "hue" when property.Value.ValueKind == JsonValueKind.Number
+                                  && property.Value.TryGetInt32(out var hue) && hue is >= 0 and <= 65535:
                         _light.Hue = hue; _light.ColorMode = "hs"; break;
-                    case "sat" when property.Value.TryGetInt32(out var sat) && sat is >= 0 and <= 254:
+                    case "sat" when property.Value.ValueKind == JsonValueKind.Number
+                                  && property.Value.TryGetInt32(out var sat) && sat is >= 0 and <= 254:
                         _light.Sat = sat; _light.ColorMode = "hs"; break;
-                    case "ct" when property.Value.TryGetInt32(out var ct) && ct is >= 153 and <= 500:
+                    case "ct" when property.Value.ValueKind == JsonValueKind.Number
+                                  && property.Value.TryGetInt32(out var ct) && ct is >= 153 and <= 500:
                         _light.Ct = ct; _light.ColorMode = "ct"; break;
                     case "xy" when property.Value.ValueKind == JsonValueKind.Array
                                    && property.Value.GetArrayLength() == 2
+                                   && property.Value[0].ValueKind == JsonValueKind.Number
+                                   && property.Value[1].ValueKind == JsonValueKind.Number
                                    && property.Value[0].TryGetDouble(out var x)
                                    && property.Value[1].TryGetDouble(out var y)
                                    && x is >= 0 and <= 1 && y is >= 0 and <= 1:

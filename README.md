@@ -7,7 +7,7 @@
 ![Windows](https://img.shields.io/badge/Windows-10%2F11-blue)
 ![MIT](https://img.shields.io/badge/license-MIT-green)
 
-> **Experimental, not yet end-to-end Chroma sync.** A SilverCrest Tuya 3.5 gateway accepted an authenticated Zigbee child status read and one opt-in color write. Live Synapse RGB events, physical lamp color and sustained update rate are not yet verified.
+> **Experimental, not yet end-to-end Chroma sync.** A SilverCrest HG06322 successfully changed a real Zigbee bulb to green over LAN, and TinyTuya confirmed the new HSV state. Live Synapse RGB events and sustained Zigbee animation performance have not yet been verified.
 
 ## Goal
 
@@ -25,7 +25,7 @@ Synapse 3 → Chroma Connect color events (5 virtual zones)
 
 Both interfaces have important limits. **The ordinary Razer Chroma REST SDK sends effects; it does not read the current Studio output.** We are exploring the Chroma Connect *device/partner* API instead, using the MIT-licensed [ChromaControl Synapse SDK](https://github.com/ChromaControl/SDK). That SDK exposes five incoming color values, but requires Razer's native `RzChromaConnectAPI64.dll` and an application ID accepted by Synapse. We will not impersonate another vendor's app.
 
-A LAN TCP connection alone does not prove Zigbee support. The tested SilverCrest gateway has now accepted one authenticated status read and one DPS 5 HSV write with successful state readback. Other hubs, child devices and repeated fast updates are unverified.
+The tested SilverCrest gateway supports authenticated Zigbee child status reads and `DPS 5` HSV writes through TinyTuya, verified by actual green light output and successful state readback. Other hubs, child devices and repeated rapid updates remain unverified.
 
 ## First tests — no changes to Smart Life
 
@@ -103,7 +103,7 @@ This is the default read-only dry run. If it reports the expected ceiling bulb s
 py tuya_color_test.py --apply
 ```
 
-Type `GREEN` when prompted. Target is green at 40% HSV value: `007803e80190`. Observe the actual lamp and the new DPS 5 read-back. Afterwards you can select any color again with Smart Life. **Do not run in a loop**, and do not upload logs containing keys or device IDs. The real test returned `SUCCESS` after writing and reading back HSV (120°, 1000, 400); the visible color of the physical lamp still requires confirmation.
+Type `GREEN` when prompted. Target is green at 40% HSV value: `007803e80190`. Observe the actual lamp and the new DPS 5 read-back. Afterwards you can select any color again with Smart Life. **Do not run in a loop**, and do not upload logs containing keys or device IDs. The real hardware test returned `SUCCESS` after writing and reading back HSV (120°, 1000, 400). The user also confirmed that the **physical ceiling lamp turned green**, with Smart Life pairing intact.
 
 ## Preview Chroma RGB to Tuya HSV (offline)
 
@@ -121,6 +121,18 @@ dotnet run --project src/ChromaProbe/ChromaProbe.csproj | py bridge_preview.py -
 
 These commands do not control any bulbs. A successful preview does not validate Synapse connectivity or an authorized Chroma Connect app GUID.
 
+## Chroma Connect prerequisites check (Windows)
+
+Our Python demo is independent of Synapse and does **not** prove that live Chroma Studio frames can be received. Before testing the receiver, run a **read-only** local environment diagnostic:
+
+```powershell
+.\scripts\check_chroma_connect.ps1
+```
+
+It lists matching Razer process names, checks for a .NET 8+ SDK and searches standard Razer install locations for `RzChromaConnectAPI64.dll`. It neither edits Synapse nor accesses Tuya. **The presence of a DLL alone does not prove that Chroma Connect accepts a new integration.**
+
+In Synapse 3, confirm that **Chroma Connect is installed and enabled** in **Modules**. The ChromaControl .NET receiver also needs an **application GUID authorized for Chroma Connect**, not a generic game-app ID. Do not copy another partner's GUID to bypass device registration. Razer's [Chroma Connect explanation](https://mysupport.razer.com/app/answers/detail/a_id/1906/) describes the partner-device model, and [ChromaControl/SDK](https://github.com/ChromaControl/SDK) contains the RGB receiver used by our prototype.
+
 ## Planned features
 
 - Multiple bulbs, each mapped to one Chroma zone or a weighted average.
@@ -135,7 +147,7 @@ These commands do not control any bulbs. A successful preview does not validate 
 | --- | --- |
 | Tuya UDP discovery / TCP connectivity | Observed with a test gateway |
 | Tuya 3.5 authenticated session | Successful on tested SilverCrest gateway |
-| Zigbee child status and HSV DPS | Read + one write/readback confirmed; visible color pending |
+| Zigbee child status and HSV DPS | Physical green output + DPS 5 write/readback confirmed for ceiling bulb |
 | Synapse 3 custom Studio color reception | Candidate MIT SDK identified; requires native DLL and authorized app ID |
 | Real-time lighting sync | Not implemented; offline Chroma RGB-to-HSV preview available |
 

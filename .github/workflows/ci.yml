@@ -26,9 +26,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '9.0.x'
       - name: Check read-only Chroma diagnostics on Windows
         shell: pwsh
         run: .\scripts\check_chroma_connect.ps1
       - name: Build Chroma Connect read-only probe
         run: dotnet build src/ChromaProbe/ChromaProbe.csproj --configuration Release
+      - name: Verify native diagnostics without registering an app
+        run: dotnet run --project src/ChromaProbe/ChromaProbe.csproj --configuration Release -- --diagnose

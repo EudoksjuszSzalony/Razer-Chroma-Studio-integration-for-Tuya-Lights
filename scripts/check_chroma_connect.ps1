@@ -21,6 +21,8 @@ Write-Host "`n.NET SDKs:"
 $dotnetCommand = Get-Command dotnet -ErrorAction SilentlyContinue
 if ($dotnetCommand) {
     & dotnet --list-sdks
+    Write-Host "`nInstalled .NET runtimes:"
+    & dotnet --list-runtimes
 } else {
     Write-Host "  dotnet is not in PATH (install the .NET 8 SDK to build ChromaProbe)."
 }

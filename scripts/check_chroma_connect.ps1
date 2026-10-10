@@ -33,12 +33,12 @@ $roots = @(
     [System.IO.Path]::Combine($env:LOCALAPPDATA, "Razer")
 ) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) } | Select-Object -Unique
 
-$matches = @()
+$foundDlls = @()
 foreach ($root in $roots) {
-    $matches += @(Get-ChildItem -LiteralPath $root -Filter "RzChromaConnectAPI64.dll" -File -Recurse -ErrorAction SilentlyContinue)
+    $foundDlls += @(Get-ChildItem -LiteralPath $root -Filter "RzChromaConnectAPI64.dll" -File -Recurse -ErrorAction SilentlyContinue)
 }
-if ($matches.Count -gt 0) {
-    $matches | Select-Object -ExpandProperty FullName -Unique | ForEach-Object { Write-Host ("  Found: " + $_) }
+if ($foundDlls.Count -gt 0) {
+    $foundDlls | Select-Object -ExpandProperty FullName -Unique | ForEach-Object { Write-Host ("  Found: " + $_) }
 } else {
     Write-Host "  Not found in standard Razer folders; this is not an exhaustive system search."
 }

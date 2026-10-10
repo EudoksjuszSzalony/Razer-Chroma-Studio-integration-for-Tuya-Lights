@@ -27,5 +27,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      - name: Check read-only Chroma diagnostics on Windows
+        shell: pwsh
+        run: .\scripts\check_chroma_connect.ps1
       - name: Build Chroma Connect read-only probe
         run: dotnet build src/ChromaProbe/ChromaProbe.csproj --configuration Release

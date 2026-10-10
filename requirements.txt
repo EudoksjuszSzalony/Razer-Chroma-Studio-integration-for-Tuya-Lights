@@ -1,0 +1,2 @@
+# Used only for authenticated, read-only Tuya child probes.
+tinytuya>=1.20,<2

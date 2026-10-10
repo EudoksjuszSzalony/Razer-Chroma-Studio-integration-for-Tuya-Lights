@@ -1,0 +1,26 @@
+# Credentials and TinyTuya local device snapshots
+.env
+.env.*
+!.env.example
+devices.json
+tinytuya.json
+snapshot.json
+tuya-raw*.json
+*.local.json
+*.secrets.json
+
+# Python / .NET
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.vs/
+.vscode/
+**/bin/
+**/obj/
+*.user
+*.suo
+
+# Diagnostic output
+diagnostics/
+*.log

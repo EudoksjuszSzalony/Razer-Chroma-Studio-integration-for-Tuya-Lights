@@ -1,0 +1,31 @@
+name: Prototype checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run safe core tests (no gateway required)
+        run: python -m unittest discover -s tests -v
+      - name: Validate demonstration frame (never sends traffic)
+        run: python bridge_preview.py --demo
+  chroma-probe-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build Chroma Connect read-only probe
+        run: dotnet build src/ChromaProbe/ChromaProbe.csproj --configuration Release

@@ -85,6 +85,26 @@ It prints five-color JSONL frames to stdout; it does not alter Studio profiles o
 
 The **developer API route is not the same** as an ordinary Chroma SDK "game/app" registration. Razer's [Connected Devices program](https://developer.razer.com/connected-devices/) is the supported route for a recognized third-party device.
 
+## Single-bulb LAN color test (opt-in)
+
+Real-world read-only tests of a SilverCrest Tuya 3.5 gateway and a Zigbee **ceiling bulb** confirmed that `DPS 5` is a 12-digit HSV string: a red sample decoded to (349°, 1000, 1000) and a blue sample to (223°, 1000, 1000).
+
+This next **experimental write test** is limited to the same bulb. It refuses to proceed unless the bulb is already **ON** and in **COLOUR** mode; prepare those settings in Smart Life. It writes only `DPS 5` once (no power, mode or other devices), and requires an explicit `GREEN` confirmation. It leaves Smart Life pairing untouched.
+
+**First, with the same PowerShell session/environment variables as the successful read-only probe:**
+
+```powershell
+py tuya_color_test.py
+```
+
+This is the default read-only dry run. If it reports the expected ceiling bulb state and you agree to change its color, run:
+
+```powershell
+py tuya_color_test.py --apply
+```
+
+Type `GREEN` when prompted. Target is green at 40% HSV value: `007803e80190`. Observe the actual lamp and the new DPS 5 read-back. Afterwards you can select any color again with Smart Life. **Do not run in a loop**, and do not upload logs containing keys or device IDs. Successful read-only Zigbee control does not guarantee color-write support on every hub model.
+
 ## Planned features
 
 - Multiple bulbs, each mapped to one Chroma zone or a weighted average.

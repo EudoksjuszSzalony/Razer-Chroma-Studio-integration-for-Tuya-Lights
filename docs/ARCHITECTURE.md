@@ -32,7 +32,7 @@ TinyTuya can create a gateway `Device(id, ip, key, version=3.5)` and a child `De
 - https://github.com/jasonacox/tinytuya/blob/master/PROTOCOL.md
 - https://github.com/jasonacox/tinytuya/discussions/470
 
-Some Lidl 3.5 hubs reject `gateway.status()` or child queries despite a successful session handshake. There is **no guarantee** this particular model forwards color commands locally. In that case the fallback is a Tuya Cloud bridge (higher latency) or a different local Zigbee coordinator (would affect pairing and is NOT part of the default design).
+The tested SilverCrest gateway accepted one `child.set_value(5, '007803e80190')` write and read back the requested HSV. This confirms the reported device state, not the visible bulb color or stability under animation load. Other Lidl 3.5 hubs may reject `gateway.status()` or child queries despite a successful session handshake. There is **no guarantee** this particular model forwards color commands locally. In that case the fallback is a Tuya Cloud bridge (higher latency) or a different local Zigbee coordinator (would affect pairing and is NOT part of the default design).
 
 For safety, color writes require user opt-in after verifying the target child ID, CIDs, on/off DPS, RGB color data encoding and capability. Do not write arbitrary DPS guesses.
 
@@ -58,10 +58,11 @@ The gateway often cannot update Zigbee bulbs at the same frame rate as a directl
 
 ## Test gates
 
-1. LAN port reachable without credentials.
-2. Authenticated **read-only** status of at least one Zigbee bulb through the existing gateway.
-3. Read-only five-zone **live** color events change when a custom Studio profile changes.
-4. Map a **single** bulb color with explicit permission, first at low frequency.
-5. Measure lag and add per-bulb configs; only then create installer/tray support.
+1. ✅ LAN port reachable without credentials.
+2. ✅ Authenticated status of a Zigbee ceiling bulb through the existing gateway.
+3. ✅ One opt-in DPS 5 write and successful HSV readback (visible lamp color still needs confirmation).
+4. ⏳ Read-only five-zone **live** events change when custom Studio profile colors change.
+5. ⏳ Confirm physical lamp color and determine reliable single-bulb update rate; only then build a continuous bridge.
+6. ⏳ Map multiple bulbs and measure latency; then add installer/tray support.
 
 No firmware flashing, packet sniffing, profile modification, or pretending to be a registered lighting partner in these probes.

@@ -7,7 +7,7 @@
 ![Windows](https://img.shields.io/badge/Windows-10%2F11-blue)
 ![MIT](https://img.shields.io/badge/license-MIT-green)
 
-> **Not yet a working Chroma-to-bulb controller.** The first milestone is read-only connectivity diagnostics and a Chroma RGB event receiver. We will enable writing only after both sides have been verified on real hardware.
+> **Experimental, not yet end-to-end Chroma sync.** A SilverCrest Tuya 3.5 gateway accepted an authenticated Zigbee child status read and one opt-in color write. Live Synapse RGB events, physical lamp color and sustained update rate are not yet verified.
 
 ## Goal
 
@@ -25,7 +25,7 @@ Synapse 3 → Chroma Connect color events (5 virtual zones)
 
 Both interfaces have important limits. **The ordinary Razer Chroma REST SDK sends effects; it does not read the current Studio output.** We are exploring the Chroma Connect *device/partner* API instead, using the MIT-licensed [ChromaControl Synapse SDK](https://github.com/ChromaControl/SDK). That SDK exposes five incoming color values, but requires Razer's native `RzChromaConnectAPI64.dll` and an application ID accepted by Synapse. We will not impersonate another vendor's app.
 
-A LAN TCP connection to a Tuya gateway is not proof that Zigbee child lights can be controlled. The gateway's local key, child IDs/CIDs, DPS schema, and support for local child commands must first be validated. Some gateway models reject or ignore local subdevice queries even with correct credentials.
+A LAN TCP connection alone does not prove Zigbee support. The tested SilverCrest gateway has now accepted one authenticated status read and one DPS 5 HSV write with successful state readback. Other hubs, child devices and repeated fast updates are unverified.
 
 ## First tests — no changes to Smart Life
 
@@ -89,7 +89,7 @@ The **developer API route is not the same** as an ordinary Chroma SDK "game/app"
 
 Real-world read-only tests of a SilverCrest Tuya 3.5 gateway and a Zigbee **ceiling bulb** confirmed that `DPS 5` is a 12-digit HSV string: a red sample decoded to (349°, 1000, 1000) and a blue sample to (223°, 1000, 1000).
 
-This next **experimental write test** is limited to the same bulb. It refuses to proceed unless the bulb is already **ON** and in **COLOUR** mode; prepare those settings in Smart Life. It writes only `DPS 5` once (no power, mode or other devices), and requires an explicit `GREEN` confirmation. It leaves Smart Life pairing untouched.
+The **experimental write test** is limited to the same bulb. It refuses to proceed unless the bulb is already **ON** and in **COLOUR** mode; prepare those settings in Smart Life. It writes only `DPS 5` once (no power, mode or other devices), and requires an explicit `GREEN` confirmation. It leaves Smart Life pairing untouched.
 
 **First, with the same PowerShell session/environment variables as the successful read-only probe:**
 
@@ -103,7 +103,23 @@ This is the default read-only dry run. If it reports the expected ceiling bulb s
 py tuya_color_test.py --apply
 ```
 
-Type `GREEN` when prompted. Target is green at 40% HSV value: `007803e80190`. Observe the actual lamp and the new DPS 5 read-back. Afterwards you can select any color again with Smart Life. **Do not run in a loop**, and do not upload logs containing keys or device IDs. Successful read-only Zigbee control does not guarantee color-write support on every hub model.
+Type `GREEN` when prompted. Target is green at 40% HSV value: `007803e80190`. Observe the actual lamp and the new DPS 5 read-back. Afterwards you can select any color again with Smart Life. **Do not run in a loop**, and do not upload logs containing keys or device IDs. The real test returned `SUCCESS` after writing and reading back HSV (120°, 1000, 400); the visible color of the physical lamp still requires confirmation.
+
+## Preview Chroma RGB to Tuya HSV (offline)
+
+The five incoming Chroma Connect zones can be previewed as a 12-character Tuya HSV DPS 5 value without sending anything to a light. The default brightness cap is 40%, based on the first confirmed color-write/readback test.
+
+```powershell
+py bridge_preview.py --demo --tuya-preview --zone 1 --max-brightness 40
+```
+
+Once Chroma Connect is registered and producing actual five-zone RGB events, the JSONL output may be piped to this preview:
+
+```powershell
+dotnet run --project src/ChromaProbe/ChromaProbe.csproj | py bridge_preview.py --tuya-preview --zone 1
+```
+
+These commands do not control any bulbs. A successful preview does not validate Synapse connectivity or an authorized Chroma Connect app GUID.
 
 ## Planned features
 
@@ -118,10 +134,10 @@ Type `GREEN` when prompted. Target is green at 40% HSV value: `007803e80190`. Ob
 | Area | Current state |
 | --- | --- |
 | Tuya UDP discovery / TCP connectivity | Observed with a test gateway |
-| Tuya 3.5 authenticated session | Pending local key |
-| Zigbee child discovery and color DPS | Pending hardware verification |
+| Tuya 3.5 authenticated session | Successful on tested SilverCrest gateway |
+| Zigbee child status and HSV DPS | Read + one write/readback confirmed; visible color pending |
 | Synapse 3 custom Studio color reception | Candidate MIT SDK identified; requires native DLL and authorized app ID |
-| Real-time lighting sync | Not implemented |
+| Real-time lighting sync | Not implemented; offline Chroma RGB-to-HSV preview available |
 
 See [Architecture and protocol notes](docs/ARCHITECTURE.md).
 

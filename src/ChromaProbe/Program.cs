@@ -32,15 +32,33 @@ if (args.Contains("--diagnose", StringComparer.OrdinalIgnoreCase))
         Console.WriteLine("No Synapse registration was attempted.");
         return 0;
     }
-    try
+    var info = FileVersionInfo.GetVersionInfo(dllPath);
+    Console.WriteLine($"File version: {info.FileVersion ?? "unknown"}");
+    Console.WriteLine("Checking Windows DLL loader search paths (no Connect Init called):");
+
+    // See Microsoft LoadLibraryEx docs: DLL_LOAD_DIR alone excludes the
+    // normal DLL search path. Adding DEFAULT_DIRS includes System32.
+    // This was the likely reason the original --diagnose reported
+    // DllNotFoundException even though the Razer DLL was present.
+    var tests = new (string Label, uint Flags)[]
     {
-        var info = FileVersionInfo.GetVersionInfo(dllPath);
-        Console.WriteLine($"File version: {info.FileVersion ?? "unknown"}");
-        // Resolve dependent DLLs from the same native installation directory.
-        var native = NativeLibrary.Load(
-            dllPath,
-            typeof(SynapseService).Assembly,
-            DllImportSearchPath.UseDllDirectoryForDependencies);
+        ("Razer DLL directory only", Win32DllLoader.LoadLibrarySearchDllLoadDir),
+        ("Razer DLL directory + safe system/application dirs",
+            Win32DllLoader.LoadLibrarySearchDllLoadDir |
+            Win32DllLoader.LoadLibrarySearchDefaultDirs)
+    };
+
+    foreach (var (label, flags) in tests)
+    {
+        var (native, errorCode) = Win32DllLoader.TryLoad(dllPath, flags);
+        if (native == IntPtr.Zero)
+        {
+            var message = new System.ComponentModel.Win32Exception(errorCode).Message;
+            Console.WriteLine($"  {label}: FAILED, Win32 {errorCode} ({message})");
+            continue;
+        }
+
+        Console.WriteLine($"  {label}: LOADED");
         try
         {
             foreach (var entry in new[]
@@ -48,23 +66,16 @@ if (args.Contains("--diagnose", StringComparer.OrdinalIgnoreCase))
                 "Init", "UnInit", "RegisterEventNotification", "UnRegisterEventNotification"
             })
             {
-                Console.WriteLine($"{entry}: " +
+                Console.WriteLine($"    {entry}: " +
                     (NativeLibrary.TryGetExport(native, entry, out _) ? "AVAILABLE" : "NOT FOUND"));
             }
         }
         finally
         {
-            NativeLibrary.Free(native);
+            Win32DllLoader.Unload(native);
         }
-        Console.WriteLine("DLL loaded and exports inspected; no Init or device registration attempted.");
     }
-    catch (Exception ex) when (
-        ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException
-            or FileLoadException)
-    {
-        Console.WriteLine("Native DLL load failed: " + ex.GetType().Name);
-        Console.WriteLine("This can mean an incompatible DLL architecture or missing native dependencies.");
-    }
+    Console.WriteLine("Diagnostics finished: no Chroma Connect Init or device registration attempted.");
     return 0;
 }
 
@@ -101,7 +112,8 @@ try
         {
             if (libraryName == "RzChromaConnectAPI64")
                 return NativeLibrary.Load(
-                    dllPath, assembly, DllImportSearchPath.UseDllDirectoryForDependencies);
+                    dllPath, assembly, DllImportSearchPath.UseDllDirectoryForDependencies |
+                        DllImportSearchPath.SafeDirectories);
             return IntPtr.Zero;
         });
 
@@ -157,4 +169,29 @@ public sealed class ProbeWorker : BackgroundService
         Console.Error.WriteLine("Waiting for authorized Chroma Connect RGB events (Ctrl+C to stop).");
         return Task.CompletedTask;
     }
+}
+
+internal static class Win32DllLoader
+{
+    // Fixed search paths: DLL directory, application directory, and System32.
+    // Never alter the process PATH, copy native DLLs, or load dependencies
+    // from the current working directory.
+    internal const uint LoadLibrarySearchDllLoadDir = 0x00000100;
+    internal const uint LoadLibrarySearchDefaultDirs = 0x00001000;
+
+    [DllImport("kernel32.dll", EntryPoint = "LoadLibraryExW",
+        CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern nint LoadLibraryExW(string path, nint reserved, uint flags);
+
+    [DllImport("kernel32.dll", EntryPoint = "FreeLibrary", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FreeLibrary(nint libraryHandle);
+
+    internal static (nint Handle, int ErrorCode) TryLoad(string path, uint flags)
+    {
+        var handle = LoadLibraryExW(path, IntPtr.Zero, flags);
+        return (handle, handle == IntPtr.Zero ? Marshal.GetLastPInvokeError() : 0);
+    }
+
+    internal static void Unload(nint handle) => FreeLibrary(handle);
 }

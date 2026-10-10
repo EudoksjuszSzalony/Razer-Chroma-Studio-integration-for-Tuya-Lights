@@ -132,9 +132,15 @@ dotnet run --project src/ChromaProbe/ChromaProbe.csproj -- --diagnose
 
 This **does not** start Chroma Connect integration. It locates the installed
 `RzChromaConnectAPI64.dll`, attempts a local load (and native dependency
-resolution), and checks for `Init`, `UnInit` and event callback exports.
+resolution) using two Windows loader modes (DLL folder only and DLL folder plus safe Windows system/application paths), and checks for `Init`, `UnInit` and event callback exports.
 It never calls `Init`, registers a device or changes any Chroma/Smart Life
-settings. The `ChromaProbe` now targets .NET 9 for computers that have the
+settings. If loading fails, the probe reports the **Win32 loader error code**
+(e.g., 126 = a module or one of its dependencies could not be found).
+A `DllNotFoundException` for an *existing* DLL does not by itself mean that
+the DLL file is missing. The native receiver now also uses Windows safe
+dependency search directories, rather than the original DLL-directory-only
+search that omitted System32. If both loader modes fail, share the diagnostic
+output (no secrets); we will then inspect missing dependent DLL names. The `ChromaProbe` now targets .NET 9 for computers that have the
 .NET 9 SDK/runtime but not .NET 8.
 
 If the native exports are present, the next test is a live Chroma Connect

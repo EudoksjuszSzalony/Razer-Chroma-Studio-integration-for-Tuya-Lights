@@ -126,3 +126,31 @@ without disabling firewall or changing your router.
 - https://mysupport.razer.com/app/answers/detail/a_id/4054/
 
 Independent community project under the MIT License.
+
+## 6. If Synapse discovers the bridge but waits forever on Push-Link
+
+Synapse 3 has been observed to repeatedly poll \`GET /api/nouser/config\`
+without sending \`POST /api\`, even while \`linkbutton=true\`. This makes
+\`HTTPS/443\` a plausible next missing feature, but not yet a confirmed
+cause of failure. Other Hue clients need both HTTP/80 and HTTPS/443.
+
+Run \`hue -Pairing\` in the first terminal. In a **second** PowerShell
+terminal, from any working directory:
+
+    $repo = "$HOME\Documents\GitHub\Razer-Chroma-Studio-integration-for-Tuya-Lights"
+    & "$repo\scripts\trace_hue_https.ps1" -Ip 192.168.1.10 -Seconds 150
+
+Now press **PAIR** in Synapse HUE while both are running.
+
+The probe binds TCP/443 to the explicit LAN IP, accepts then immediately
+closes incoming connections, reporting only the remote endpoint. It **does
+not read TLS packets, create certificates, register clients or capture
+secrets**. Synapse cannot finish pairing through this diagnostic monitor.
+If port 443 is occupied, it reports the bind error rather than altering
+other services. Do NOT turn off firewalls or open router ports.
+
+A detected connection supports implementing the Hue HTTPS endpoint.
+If none appears, capture both the physical network interface and Npcap
+Loopback Adapter during pairing and check whether TCP SYN is sent to
+the bridge IP on 443. Local same-host TCP may bypass the physical NIC.
+Run with \`-SelfTest\` to exercise the monitor on 127.0.0.1 and a free port.

@@ -51,3 +51,6 @@ jobs:
       - name: Check HTTP API, pairing, virtual lamp and disabled DTLS
         shell: pwsh
         run: .\scripts\test_hue_probe.ps1
+      - name: Verify no-payload TCP443 connection diagnostic locally
+        shell: pwsh
+        run: .\scripts\trace_hue_https.ps1 -SelfTest

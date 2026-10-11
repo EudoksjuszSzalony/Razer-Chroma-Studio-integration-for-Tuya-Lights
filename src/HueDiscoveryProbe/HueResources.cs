@@ -31,7 +31,7 @@ public static class HueResources
     public static object[] Error(int type, string address, string description) =>
         [new { error = new { type, address, description } }];
 
-    public static object Config(IPAddress ip, HueBridgeStore store) => new
+    public static object Config(IPAddress ip, HueBridgeStore store, bool linkButtonPressed = false) => new
     {
         name = "Chroma Tuya Hue Bridge (TEST)",
         zigbeechannel = 11,
@@ -47,7 +47,7 @@ public static class HueResources
         swversion = "1959097030",
         apiversion = "1.52.0",
         datastoreversion = "93",
-        linkbutton = false,
+        linkbutton = linkButtonPressed,
         portalservices = false,
         portalconnection = "disconnected",
         portalstate = new { signedon = false, incoming = false, outgoing = false,
@@ -92,10 +92,10 @@ public static class HueResources
         xy = new double[] { 0.675, 0.322 }, ct = 366, alert = "none", colormode = "hs"
     };
 
-    public static object Overview(IPAddress ip, HueBridgeStore store) => new
+    public static object Overview(IPAddress ip, HueBridgeStore store, bool linkButtonPressed = false) => new
     {
         lights = Lights(store), groups = Groups(),
-        config = Config(ip, store),
+        config = Config(ip, store, linkButtonPressed),
         scenes = new Dictionary<string, object>(),
         schedules = new Dictionary<string, object>(),
         sensors = new Dictionary<string, object>(),

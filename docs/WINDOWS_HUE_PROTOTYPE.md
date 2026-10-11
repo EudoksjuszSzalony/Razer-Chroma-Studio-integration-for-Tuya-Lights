@@ -19,7 +19,13 @@ real Tuya connections.
 - A **partial** Hue v1 HTTP API: /api/nouser/config, /api, /api/{user}/lights,
   /api/{user}/groups and a virtual Entertainment group with one light.
 - A deliberately short pairing window (flag --pairing-seconds, 0 by default,
-  maximum 300s). POST /api otherwise reports that the link button wasn't pressed.
+  maximum 300s). **`GET /api/nouser/config` now exposes
+  `linkbutton: true` while the window is active**, and `false` after it
+  expires; POST /api creates a local test client only while active.
+  Previously, the flag was always false even with --pairing-seconds 120.
+  In the first Razer Synapse pairing test the module repeatedly polled
+  `GET /api/nouser/config` but did not call `POST /api`; fixing the
+  status mismatch is the next compatibility experiment.
 - Simulated light-state updates IN MEMORY ONLY. No control of physical bulbs.
 - A persistent bridge ID and local client credentials in
   %LOCALAPPDATA%\ChromaTuyaBridge\hue-discovery.json. Do not upload it or
@@ -85,7 +91,14 @@ After **discovery** is successful, press Ctrl+C in the emulator and restart:
 
     dotnet run --project src\HueDiscoveryProbe\HueDiscoveryProbe.csproj -- --ip 192.168.1.20 --pairing-seconds 120
 
-Within 120 seconds, follow the Synapse pairing prompt. The virtual light
+Within 120 seconds, follow the Synapse pairing prompt. The following
+read-only request should return `True` during the window and `False`
+when pairing is disabled:
+
+    (Invoke-RestMethod "http://192.168.1.20/api/nouser/config").linkbutton
+
+The code cannot simulate a real physical Hue button event by itself; this
+is only the Hue API configuration flag. The virtual light
 does not affect Smart Life or real devices. Credentials persist across
 restarts in the user profile.
 
@@ -100,6 +113,7 @@ CI runs scripts/test_hue_probe.ps1 on Windows using this mode, but does not
 replicate Synapse itself. A packet-level, offline mDNS self-test runs via:
 
     dotnet run --project src/HueDiscoveryProbe -- --mdns-selftest
+    dotnet run --project src/HueDiscoveryProbe -- --pairing-selftest
 
 If Synapse still cannot find the emulated bridge, capture a focused test
 of multicast 5353 plus both Windows loopback and physical network adapters,

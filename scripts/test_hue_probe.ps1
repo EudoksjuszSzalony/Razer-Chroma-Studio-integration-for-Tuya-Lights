@@ -23,6 +23,9 @@ try {
     }
     $config = Invoke-RestMethod "$base/api/nouser/config"
     if ($config.modelid -ne "BSB002") { throw "Hue config model mismatch" }
+    if ($config.linkbutton -ne $true) { throw "Virtual Hue push-link status should be ON" }
+    $otherConfig = Invoke-RestMethod "$base/api/config"
+    if ($otherConfig.linkbutton -ne $true) { throw "Public Hue config should report push-link ON" }
     $pair = Invoke-RestMethod -Uri "$base/api" -Method Post -ContentType "application/json" -Body '{"devicetype":"ci-smoke-test","generateclientkey":true}'
     $username = @($pair)[0].success.username
     $clientKey = @($pair)[0].success.clientkey
@@ -38,7 +41,7 @@ try {
     if ($updated.state.hue -ne 25500) { throw "Virtual lamp memory update missing" }
     $stream = Invoke-RestMethod -Uri "$base/api/$username/groups/1/stream" -Method Put -ContentType "application/json" -Body '{"stream":{"active":true}}'
     if (@($stream)[0].error.type -ne 901) { throw "Entertainment stream should be rejected" }
-    Write-Host "Hue mock bridge: HTTP, pairing, virtual light and stream rejection OK"
+    Write-Host "Hue mock bridge: HTTP, live push-link, pairing, virtual light and stream rejection OK"
 } finally {
     if (!$process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
 }

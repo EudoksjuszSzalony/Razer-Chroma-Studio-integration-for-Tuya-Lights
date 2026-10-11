@@ -1,6 +1,13 @@
 using System.Net;
 using System.Text.Json;
 
+if (args.Contains("--pairing-selftest", StringComparer.OrdinalIgnoreCase))
+{
+    bool passed = HuePairingWindow.RunSelfTest();
+    Console.WriteLine(passed ? "Hue push-link window self-test: OK" : "Hue push-link window self-test: FAILED");
+    return passed ? 0 : 1;
+}
+
 if (args.Contains("--mdns-selftest", StringComparer.OrdinalIgnoreCase))
 {
     bool passed = HueMdnsResponder.RunOfflineSelfTest();
@@ -18,6 +25,7 @@ if (args.Contains("--help") || args.Contains("-h"))
           --no-ssdp                  Disable SSDP UDP/1900 (for HTTP tests)
           --no-mdns                  Disable Hue mDNS UDP/5353 (for HTTP tests)
           --mdns-selftest            Validate mDNS query/response packets offline
+          --pairing-selftest         Validate push-link 0/120-second window offline
           --pairing-seconds <0..300> Open simulated pairing window on startup (default 0)
           --help                     Show this help
 
@@ -63,7 +71,7 @@ if (!IPAddress.TryParse(ipText, out var ip) || ip.AddressFamily != System.Net.So
 
 var store = new HueBridgeStore();
 var localUrl = $"http://{ip}:{port}";
-var pairingUntil = DateTimeOffset.UtcNow.AddSeconds(pairingSeconds);
+var pairingWindow = new HuePairingWindow(pairingSeconds);
 var builder = WebApplication.CreateBuilder();
 builder.WebHost.UseUrls(localUrl);
 builder.Logging.ClearProviders();
@@ -76,15 +84,18 @@ app.MapGet("/", () => Results.Content(
 
 app.MapGet("/description.xml", () => Results.Content(
     HueDescription.Render(ip, port, store), "text/xml; charset=utf-8"));
-app.MapGet("/api/config", () => Results.Json(HueResources.Config(ip, store)));
+app.MapGet("/api/config", () => Results.Json(HueResources.Config(ip, store, pairingWindow.IsPressed)));
 app.MapGet("/api/nouser/config", () =>
-    Results.Json(HueResources.Config(ip, store)));
+    Results.Json(HueResources.Config(ip, store, pairingWindow.IsPressed)));
 
 // Hue v1 bridge user creation. Pairing is opt-in and temporary.
 app.MapPost("/api", async (HttpContext ctx) =>
 {
-    if (DateTimeOffset.UtcNow > pairingUntil)
+    if (!pairingWindow.IsPressed)
+    {
+        Console.WriteLine("[Hue pairing] Registration attempt rejected: push-link button is not active.");
         return Results.Json(HueResources.Error(101, "", "link button not pressed"));
+    }
 
     try
     {
@@ -113,7 +124,7 @@ app.MapPost("/api", async (HttpContext ctx) =>
 
 app.MapGet("/api/{user}", (string user) =>
     store.IsAuthorized(user)
-        ? Results.Json(HueResources.Overview(ip, store))
+        ? Results.Json(HueResources.Overview(ip, store, pairingWindow.IsPressed))
         : Results.Json(HueResources.Error(1, "/", "unauthorized user")));
 
 app.MapGet("/api/{user}/lights", (string user) =>
@@ -142,7 +153,7 @@ app.MapGet("/api/{user}/groups/{group}", (string user, string group) =>
 
 app.MapGet("/api/{user}/config", (string user) =>
     store.IsAuthorized(user)
-        ? Results.Json(HueResources.Config(ip, store))
+        ? Results.Json(HueResources.Config(ip, store, pairingWindow.IsPressed))
         : Results.Json(HueResources.Error(1, "/config", "unauthorized user")));
 
 foreach (var path in new[] { "scenes", "schedules", "rules", "resourcelinks", "sensors" })

@@ -1,6 +1,13 @@
 using System.Net;
 using System.Text.Json;
 
+if (args.Contains("--mdns-selftest", StringComparer.OrdinalIgnoreCase))
+{
+    bool passed = HueMdnsResponder.RunOfflineSelfTest();
+    Console.WriteLine(passed ? "Hue mDNS offline packet self-test: OK" : "Hue mDNS offline packet self-test: FAILED");
+    return passed ? 0 : 1;
+}
+
 if (args.Contains("--help") || args.Contains("-h"))
 {
     Console.WriteLine("""
@@ -8,7 +15,9 @@ if (args.Contains("--help") || args.Contains("-h"))
         Usage: dotnet run --project src/HueDiscoveryProbe -- --ip <local-LAN-IPv4> [options]
         Options:
           --port <1..65535>          HTTP port (default 80; Hue clients often require 80)
-          --no-ssdp                  Disable UDP multicast discovery (for HTTP tests)
+          --no-ssdp                  Disable SSDP UDP/1900 (for HTTP tests)
+          --no-mdns                  Disable Hue mDNS UDP/5353 (for HTTP tests)
+          --mdns-selftest            Validate mDNS query/response packets offline
           --pairing-seconds <0..300> Open simulated pairing window on startup (default 0)
           --help                     Show this help
 
@@ -22,7 +31,7 @@ if (args.Contains("--help") || args.Contains("-h"))
 
 string? ipText = null;
 int port = 80, pairingSeconds = 0;
-bool ssdpEnabled = true;
+bool ssdpEnabled = true, mdnsEnabled = true;
 for (int i = 0; i < args.Length; i++)
 {
     switch (args[i])
@@ -38,6 +47,8 @@ for (int i = 0; i < args.Length; i++)
             pairingSeconds = requestedSeconds; i++; break;
         case "--no-ssdp":
             ssdpEnabled = false; break;
+        case "--no-mdns":
+            mdnsEnabled = false; break;
         default:
             Console.Error.WriteLine($"Invalid argument: {args[i]}. Use --help.");
             return 2;
@@ -195,6 +206,25 @@ if (ssdpEnabled)
 }
 else Console.WriteLine("SSDP multicast disabled (--no-ssdp).");
 
+Task? mdnsTask = null;
+if (mdnsEnabled)
+{
+    mdnsTask = Task.Run(async () =>
+    {
+        try
+        {
+            await new HueMdnsResponder(ip, port, store).RunAsync(ssdpCts.Token);
+        }
+        catch (OperationCanceledException) when (ssdpCts.IsCancellationRequested) { }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("[mDNS] " + ex.GetType().Name + ": " + ex.Message);
+            Console.Error.WriteLine("[mDNS] Hue mDNS discovery unavailable; HTTP and SSDP remain independent.");
+        }
+    });
+}
+else Console.WriteLine("Hue mDNS disabled (--no-mdns).");
+
 Console.WriteLine("=== Chroma Tuya virtual Hue bridge: DISCOVERY PROTOTYPE ===");
 Console.WriteLine($"Bridge URL: {localUrl}");
 Console.WriteLine($"Description: {localUrl}/description.xml");
@@ -209,5 +239,6 @@ finally
 {
     ssdpCts.Cancel();
     if (ssdpTask != null) try { await ssdpTask; } catch (OperationCanceledException) { }
+    if (mdnsTask != null) try { await mdnsTask; } catch (OperationCanceledException) { }
 }
 return 0;

@@ -44,6 +44,8 @@ jobs:
           dotnet-version: '9.0.x'
       - name: Build native Hue emulator
         run: dotnet build src/HueDiscoveryProbe/HueDiscoveryProbe.csproj --configuration Release
+      - name: Test mDNS query parsing and DNS-SD Hue service response (offline)
+        run: dotnet run --project src/HueDiscoveryProbe/HueDiscoveryProbe.csproj --configuration Release -- --mdns-selftest
       - name: Check HTTP API, pairing, virtual lamp and disabled DTLS
         shell: pwsh
         run: .\scripts\test_hue_probe.ps1

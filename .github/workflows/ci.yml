@@ -1,0 +1,56 @@
+name: Prototype checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run safe core tests (no gateway required)
+        run: python -m unittest discover -s tests -v
+      - name: Validate demonstration frame (never sends traffic)
+        run: python bridge_preview.py --demo
+  chroma-probe-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Check read-only Chroma diagnostics on Windows
+        shell: pwsh
+        run: .\scripts\check_chroma_connect.ps1
+      - name: Build Chroma Connect read-only probe
+        run: dotnet build src/ChromaProbe/ChromaProbe.csproj --configuration Release
+      - name: Verify native diagnostics without registering an app
+        run: dotnet run --project src/ChromaProbe/ChromaProbe.csproj --configuration Release -- --diagnose
+  hue-prototype-windows:
+    name: Native Hue Bridge Windows smoke
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Build native Hue emulator
+        run: dotnet build src/HueDiscoveryProbe/HueDiscoveryProbe.csproj --configuration Release
+      - name: Test mDNS query parsing and DNS-SD Hue service response (offline)
+        run: dotnet run --project src/HueDiscoveryProbe/HueDiscoveryProbe.csproj --configuration Release -- --mdns-selftest
+      - name: Test virtual Hue push-link window transitions (offline)
+        run: dotnet run --project src/HueDiscoveryProbe/HueDiscoveryProbe.csproj --configuration Release -- --pairing-selftest
+      - name: Check HTTP API, pairing, virtual lamp and disabled DTLS
+        shell: pwsh
+        run: .\scripts\test_hue_probe.ps1
+      - name: Verify no-payload TCP443 connection diagnostic locally
+        shell: pwsh
+        run: .\scripts\trace_hue_https.ps1 -SelfTest

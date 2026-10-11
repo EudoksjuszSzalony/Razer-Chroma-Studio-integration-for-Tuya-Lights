@@ -10,17 +10,15 @@ param(
 )
 $ErrorActionPreference = "Stop"
 
-if ($SelfTest) {
-    $Ip = "127.0.0.1"
-    $Port = 0  # Let Windows allocate an ephemeral free port.
-    $Seconds = 3
-}
+$bindIp = if ($SelfTest) { "127.0.0.1" } else { $Ip }
+$bindPort = if ($SelfTest) { 0 } else { $Port }  # Ephemeral port for self-test.
+$duration = if ($SelfTest) { 3 } else { $Seconds }
 
-$address = [System.Net.IPAddress]::Parse($Ip)
+$address = [System.Net.IPAddress]::Parse($bindIp)
 if ($address.AddressFamily -ne [System.Net.Sockets.AddressFamily]::InterNetwork) {
     throw "Only IPv4 is supported."
 }
-$listener = [System.Net.Sockets.TcpListener]::new($address, $Port)
+$listener = [System.Net.Sockets.TcpListener]::new($address, $bindPort)
 $detected = 0
 try {
     $listener.Start()
@@ -40,7 +38,7 @@ try {
     }
 
     $watch = [System.Diagnostics.Stopwatch]::StartNew()
-    while ($watch.Elapsed.TotalSeconds -lt $Seconds) {
+    while ($watch.Elapsed.TotalSeconds -lt $duration) {
         if ($listener.Pending()) {
             $client = $listener.AcceptTcpClient()
             try {
